@@ -43,7 +43,7 @@ The main idea behind segment trees is this:
 
 These computed subsegment sums can be logically represented as a binary tree — which is what we call a *segment tree*:
 
-![A segment tree with with the nodes relevant for the sum(11) and add(10) queries highlighted](../img/segtree-path.png)
+![A segment tree with with the nodes relevant for the sum(11) and add(10) queries highlighted](./img/segtree-path.png)
 
 Segment trees have some nice properties:
 
@@ -172,7 +172,7 @@ int sum(int k) {
 
 Since we have two types of queries, we also got two graphs to look at:
 
-![](../img/segtree-pointers.svg)
+![](./img/segtree-pointers.svg)
 
 While this object-oriented implementation is quite good in terms of software engineering practices, there are several aspects that make it terrible in terms of performance:
 
@@ -194,7 +194,7 @@ More formally, we define node $1$ to be the root, holding the sum of the entire 
 
 When $n$ is a perfect power of two, this layout packs the entire tree very nicely:
 
-![The memory layout of the implicit segment tree with the same query path highlighted](../img/segtree-layout.png)
+![The memory layout of the implicit segment tree with the same query path highlighted](./img/segtree-layout.png)
 
 However, when $n$ is not a power of two, the layout stops being compact: although we still have exactly $(2n - 1)$ nodes regardless of how we split segments, they are no longer mapped perfectly to the $[1, 2n)$ range.
 
@@ -244,7 +244,7 @@ int sum(int k, int v = 1, int l = 0, int r = N) {
 
 Passing around five variables in a recursive function seems clumsy, but the performance gains are clearly worth it:
 
-![](../img/segtree-topdown.svg)
+![](./img/segtree-topdown.svg)
 
 Apart from requiring much less memory, which is good for fitting into the CPU caches, the main advantage of this implementation is that we can now make use of the [memory parallelism](/hpc/cpu-cache/mlp) and fetch the nodes we need in parallel, considerably improving the running time for both queries.
 
@@ -295,7 +295,7 @@ int sum(int k) {
 
 This doesn't improve the performance for the update query by a lot (because it was tail-recursive, and the compiler already performed a similar optimization), but the running time on the prefix sum query has roughly halved for all problem sizes:
 
-![](../img/segtree-iterative.svg)
+![](./img/segtree-iterative.svg)
 
 This implementation still has some problems: we are using up to twice as much memory as necessary, we have costly [branching](/hpc/pipelining/branching), and we have to maintain and re-compute array bounds on each iteration. To get rid of these problems, we need to change our approach a little bit.
 
@@ -339,7 +339,7 @@ int sum(int l, int r) {
 
 Surprisingly, both queries work correctly even when $n$ is not a power of two. To understand why, consider a 13-element segment tree:
 
-![](../img/segtree-permuted.png)
+![](./img/segtree-permuted.png)
 
 The first index of the last layer is always a power of two, but when the array size is not a perfect power of two, some prefix of the leaf elements gets wrapped around to the right side of the tree. Magically, this fact does not pose a problem for our implementation:
 
@@ -348,7 +348,7 @@ The first index of the last layer is always a power of two, but when the array s
 
 Compared to the top-down approach, we use half the memory and don't have to maintain query ranges, which results in simpler and consequently faster code:
 
-![](../img/segtree-bottomup.svg)
+![](./img/segtree-bottomup.svg)
 
 When running the benchmarks, we use the `sum(l, r)` procedure for computing a general subsegment sum and just fix `l` equal to `0`. To achieve higher performance on the prefix sum query, we want to avoid maintaining `l` and only move the right border like this:
 
@@ -421,7 +421,7 @@ int sum(int k) {
 
 When combined, these optimizations make the prefix sum queries run much faster:
 
-![](../img/segtree-branchless.svg)
+![](./img/segtree-branchless.svg)
 
 Notice that the bump in the latency for the prefix sum query starts at $2^{19}$ and not at $2^{20}$, the L3 cache boundary. This is because we are still storing $2n$ integers and also fetching the `t[k]` element regardless of whether we will add it to `s` or not. We can actually solve both of these problems.
 
@@ -439,7 +439,7 @@ For any node $p$, its sum $s_p$ equals to the sum $(s_l + s_r)$ stored in its ch
 
 -->
 
-![](../img/segtree-succinct.png)
+![](./img/segtree-succinct.png)
 
 *The Fenwick tree* (also called *binary indexed tree* — soon you'll understand why) is a type of segment tree that uses this consideration and gets rid of all *right* children, essentially removing every second node in each layer and making the total node count the same as the underlying array.
 
@@ -494,7 +494,7 @@ int sum(int k) {
 
 Since we are repeatedly removing the lowest set bit from `k`, and also since this procedure is equivalent to visiting the same left-child nodes in a segment tree, each `sum` query can touch at most $O(\log n)$ nodes:
 
-![A path for a prefix sum query in a Fenwick tree](../img/fenwick-sum.png)
+![A path for a prefix sum query in a Fenwick tree](./img/fenwick-sum.png)
 
 To slightly improve the performance of the `sum` query, we use `k &= k - 1` to remove the lowest bit in one go, which is one instruction faster than `k -= k & -k`:
 
@@ -529,7 +529,7 @@ void add(int k, int x) {
 
 Repeatedly adding the lowest set bit to `k` makes it "more even" and lifts it to its next left-child segment tree ancestor:
 
-![A path for an update query in a Fenwick tree](../img/fenwick-update.png)
+![A path for an update query in a Fenwick tree](./img/fenwick-update.png)
 
 Now, if we leave all the code as it is, it works correctly even when $n$ is not a power of two. In this case, the Fenwick tree is not equivalent to a segment tree of size $n$ but to a *forest* of up to $O(\log n)$ segment trees of power-of-two sizes — or to a single segment tree padded with zeros to a large power of two, if you like to think this way. In either case, all procedures still work correctly as they never touch anything outside the $[1, n]$ range.
 
@@ -537,7 +537,7 @@ Now, if we leave all the code as it is, it works correctly even when $n$ is not 
 
 The performance of the Fenwick tree is similar to the optimized bottom-up segment tree for the update queries and slightly faster for the prefix sum queries:
 
-![](../img/segtree-fenwick.svg)
+![](./img/segtree-fenwick.svg)
 
 There is one weird thing on the graph. After we cross the L3 cache boundary, the performance takes off very rapidly. This is a [cache associativity](/hpc/cpu-cache/associativity) effect: the most frequently used cells all have their indices divisible by large powers of two, so they get aliased to the same cache set, kicking each other out and effectively reducing the cache size.
 
@@ -565,7 +565,7 @@ int sum(int k) {
 
 Computing the `hole` function is not on the critical path between iterations, so it does not introduce any significant overhead but completely removes the cache associativity problem and shrinks the latency by up to 3x on large arrays:
 
-![](../img/segtree-fenwick-holes.svg)
+![](./img/segtree-fenwick-holes.svg)
 
 Fenwick trees are fast, but there are still other minor issues with them. Similar to [binary search](../binary-search), the temporal locality of their memory accesses is not the greatest, as rarely accessed elements are grouped with the most frequently accessed ones. Fenwick trees also execute a non-constant number of iterations and have to perform end-of-loop checks, very likely causing a branch misprediction — although just a single one.
 
@@ -575,7 +575,7 @@ There are probably still some things to optimize, but we are going to leave it t
 
 Here is the main idea: if the memory system is fetching a full [cache line](/hpc/cpu-cache/cache-lines) for us anyway, let's fill it to the maximum with information that lets us process the query quicker. For segment trees, this means storing more than one data point in a node. This lets us reduce the tree height and perform fewer iterations when descending or ascending it:
 
-![](../img/segtree-wide.png)
+![](./img/segtree-wide.png)
 
 We will use the term *wide (B-ary) segment tree* to refer to this modification.
 
@@ -664,11 +664,11 @@ void add(int k, int x) {
 
 This speeds up the `sum` query by more than 10x and the `add` query by up to 4x compared to the Fenwick tree:
 
-![](../img/segtree-simd.svg)
+![](./img/segtree-simd.svg)
 
 Unlike [S-trees](../s-tree), the block size can be easily changed in this implementation (by literally changing one character). Expectedly, when we increase it, the update time also increases as we need to fetch more cache lines and process them, but the `sum` query time decreases as the height of the tree becomes smaller:
 
-![](../img/segtree-simd-others.svg)
+![](./img/segtree-simd-others.svg)
 
 Similar to the [S+ trees](../s-tree/#modifications-and-further-optimizations), the optimal memory layout probably has non-uniform block sizes, depending on the problem size and the distribution of queries, but we are not going to explore this idea and just leave the optimization here.
 
@@ -678,11 +678,11 @@ Similar to the [S+ trees](../s-tree/#modifications-and-further-optimizations), t
 
 Wide segment trees are significantly faster compared to other popular segment tree implementations:
 
-![](../img/segtree-popular.svg)
+![](./img/segtree-popular.svg)
 
 The relative speedup is in the orders of magnitude:
 
-![](../img/segtree-popular-relative.svg)
+![](./img/segtree-popular-relative.svg)
 
 Compared to the original pointer-based implementation, the wide segment tree is up to 200 and 40 times faster for the prefix sum and update queries, respectively — although, for sufficiently large arrays, both implementations become purely memory-bound, and this speedup goes down to around 60 and 15 respectively.
 
